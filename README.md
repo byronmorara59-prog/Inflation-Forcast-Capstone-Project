@@ -11,13 +11,11 @@
 | **Output** | Regression (exact rate) + Classification (Up / Down / Stable) |
 | **Data Range** | 2009 – 2024 (post-CPI rebase harmonisation) |
 | **Data Sources** | KNBS, CBK, World Bank/IMF, EIA, FAO, FRED — no Kaggle datasets |
-| **Deployment** | Selenium-powered web application |
+| **Deployment** | Streamlit |
 
 ---
 
 ## 1. Target Audience
-
-This project is most relevant to the following stakeholders who either influence, respond to, or are directly impacted by Kenya's inflation rate:
 
 - **Central Bank of Kenya (CBK)** — anticipate inflation shifts before MPC meetings rather than reacting after CPI is published, enabling more proactive monetary policy
 - **National Treasury & Ministry of Finance** — adjust government spending and borrowing decisions based on forward-looking inflation signals for better fiscal planning
@@ -37,7 +35,7 @@ The project is structured around three pillars:
 
 - **Data engineering** — scraping, cleaning, and harmonising multi-source macroeconomic data into a unified monthly dataset
 - **Modelling** — training and benchmarking LSTM/GRU models against classical (ARIMA) and ML (XGBoost) baselines
-- **Deployment** — delivering predictions via a live web application built with Selenium
+- **Deployment** — delivering predictions via streamlit
 
 ---
 
@@ -72,25 +70,14 @@ A critical research decision is ensuring that inflation data is methodologically
 | Period | CPI Methodology | Research Implication |
 |---|---|---|
 | Pre-2009 | Based on outdated 1997 Household Budget Survey weights | Not comparable with modern data — excluded from study |
-| 2009 onward | Rebased using 2005/2006 Household Budget Survey — major structural overhaul of basket weights | ✔ **Study Start Point** — consistent, modern methodology |
-| 2019/2020+ | Further rebased using 2015/2016 survey — current active basket | Refinement within same framework — data remains comparable |
+| 2009 onward | Rebased using 2005/2006 Household Budget Survey — major structural overhaul of basket weights | **Study Start Point** — consistent, modern methodology |
 
 ---
 
 ## 6. Dataset Description
 
-### 6.1 Structure
 
-| | |
-|---|---|
-| **Unit of Observation** | One calendar month |
-| **Frequency** | Monthly |
-| **Study Period** | January 2009 – December 2024 (~180 observations) |
-| **Target Variable (y)** | Kenya Headline CPI Inflation Rate (%) — published monthly by KNBS |
-| **Features (X)** | ~15–20 macroeconomic indicators across supply-side, monetary, demand-side, and global categories |
-| **Format** | Single merged CSV — date-indexed, all variables aligned to monthly frequency |
-
-### 6.2 Feature Categories
+### 6.1 Feature Categories
 
 Rather than tracking individual commodity prices, KNBS publishes pre-aggregated CPI sub-indices that combine all items within each category. These are used directly as features.
 
@@ -130,24 +117,14 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 
 | Source | Data Provided | Collection Method |
 |---|---|---|
-| KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures | BeautifulSoup scraper + Excel/PDF report parsing |
-| CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth | BeautifulSoup + pdfplumber for PDF reports |
-| World Bank / IMF API | GDP growth, government spending, fiscal deficit, trade balance | Public JSON REST API (free) |
+| KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures | BeautifulSoup or selenium scraper + Excel/PDF report parsing |
+| CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth | BeautifulSoup or selenium + pdfplumber for PDF reports |
+| World Bank / IMF API | GDP growth, government spending, fiscal deficit, trade balance | Public JSON REST API |
 | EIA (eia.gov) | Global Brent crude oil prices — monthly averages | EIA Open Data API / CSV download |
 | FAO (fao.org) | Global food commodity price index — monthly | FAO Data API / CSV download |
-| FRED (Federal Reserve) | US Fed funds rate, DXY dollar index | fredapi Python library (free API key) |
+| FRED (Federal Reserve) | US Fed funds rate, DXY dollar index | fredapi Python library |
 
-### 7.1 Data Availability Assessment
 
-| Source | Assessment |
-|---|---|
-| KNBS | Clean digital records from 2009 onward. Some older reports in PDF format — extractable with pdfplumber |
-| CBK | Well-maintained historical records from 2009. Statistical bulletins available as monthly Excel/PDF downloads |
-| World Bank / IMF | Structured data from 2009 and earlier — reliable JSON API with no known gaps |
-| EIA / FAO / FRED | Global datasets available well before 2009 — no sourcing concerns |
-| Known Gaps | Some KNBS sub-indices before 2010 may have missing months — handled via forward fill or linear interpolation, documented as a data limitation |
-
----
 
 ## 8. Methodology
 
@@ -156,18 +133,18 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 | | |
 |---|---|
 | **Time Series Forecasting** | The fundamental nature of the problem — data is sequential, monthly, and order-dependent |
-| **Regression Task** | Predict the exact headline CPI inflation rate (%) for next month — e.g. output: 6.3% |
+| **Regression Task** | Predict the exact headline CPI inflation rate (%) for next month — for example output: 6.3% |
 | **Classification Task** | Predict the direction of change: Will inflation Rise / Fall / Stay Stable next month? |
-| **Forecast Horizon** | One-step ahead (next month) — the most practically useful and honest formulation |
+| **Forecast Horizon** | One-step ahead (next month) |
 
 ### 8.2 Models
 
 | Model | Type | Role & Rationale |
 |---|---|---|
 | LSTM (Long Short-Term Memory) | Deep Learning — Recurrent | **Primary:** Designed for sequential data; captures long-range dependencies across months |
-| GRU (Gated Recurrent Unit) | Deep Learning — Recurrent | **Secondary:** Lighter, faster alternative to LSTM with fewer parameters — compared for performance vs. efficiency. Often competitive on small datasets (~180 obs) |
-| ARIMA / SARIMA | Classical Time Series | **Baseline:** Industry-standard benchmark. SARIMA variant handles Kenya's seasonal inflation patterns |
-| XGBoost with Lag Features | Gradient Boosting (ML) | **ML Baseline:** Strong non-deep-learning benchmark on engineered lag features — often competitive with LSTM on tabular time series |
+| GRU (Gated Recurrent Unit) | Deep Learning — Recurrent | **Secondary:** Lighter, faster alternative to LSTM with fewer parameters — compared for performance vs. efficiency. |
+| ARIMA / SARIMA | Classical Time Series | **Baseline:** SARIMA variant handles Kenya's seasonal inflation patterns |
+| XGBoost with Lag Features | Gradient Boosting (ML) | **ML Baseline:** Strong non-deep-learning benchmark on engineered lag features |
 
 ### 8.3 Key Technical Considerations
 
@@ -225,6 +202,7 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 - ~180 monthly observations is a relatively small dataset for deep learning — regularisation and careful cross-validation are critical
 - Some KNBS sub-index data before 2010 may have gaps requiring interpolation — documented as a data quality limitation
 - Structural breaks (COVID-19 2020, post-election shocks) may distort model performance in those periods
+- LSTM/GRU models are sensitive to hyperparameter choices — systematic tuning via grid search required
 
 ### 12.2 Future Work
 
