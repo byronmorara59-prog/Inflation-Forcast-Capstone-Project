@@ -142,7 +142,7 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 | Model | Type | Role & Rationale |
 |---|---|---|
 | LSTM (Long Short-Term Memory) | Deep Learning — Recurrent | **Primary:** Designed for sequential data; captures long-range dependencies across months |
-| GRU (Gated Recurrent Unit) | Deep Learning — Recurrent | **Secondary:** Lighter, faster alternative to LSTM with fewer parameters — compared for performance vs. efficiency. |
+
 | ARIMA / SARIMA | Classical Time Series | **Baseline:** SARIMA variant handles Kenya's seasonal inflation patterns |
 | XGBoost with Lag Features | Gradient Boosting (ML) | **ML Baseline:** Strong non-deep-learning benchmark on engineered lag features |
 
