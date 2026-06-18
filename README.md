@@ -7,7 +7,7 @@
 |---|---|
 | **Problem Type** | Multivariate Time Series Forecasting |
 | **Target Variable** | Kenya Headline CPI Inflation Rate (monthly, one-step ahead) |
-| **Models** | LSTM / GRU (Deep Learning) · ARIMA / SARIMA (classical baseline) · XGBoost with lag features (ML baseline) |
+| **Models** | LSTM (Deep Learning) · ARIMA / SARIMA (classical baseline) · XGBoost with lag features (ML baseline) |
 | **Output** | Regression (exact rate) + Classification (Up / Down / Stable) |
 | **Data Range** | 2009 – 2024 (post-CPI rebase harmonisation) |
 | **Data Sources** | KNBS, CBK, World Bank/IMF, EIA, FAO, FRED — no Kaggle datasets |
@@ -34,7 +34,7 @@ This project develops a machine learning system to forecast Kenya's monthly head
 The project is structured around three pillars:
 
 - **Data engineering** — scraping, cleaning, and harmonising multi-source macroeconomic data into a unified monthly dataset
-- **Modelling** — training and benchmarking LSTM/GRU models against classical (ARIMA) and ML (XGBoost) baselines
+- **Modelling** — training and benchmarking LSTM model against classical (ARIMA) and ML (XGBoost) baselines
 - **Deployment** — delivering predictions via streamlit
 
 ---
@@ -151,7 +151,7 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 | Consideration | Detail |
 |---|---|
 | Lag Features | Inflation this month is influenced by indicators from prior months. A lag window (e.g. 3–6 months back) is engineered as additional input features |
-| Seasonality | Kenya's inflation has seasonal patterns — food prices spike during dry seasons. SARIMA models this explicitly; month-of-year added as a cyclical feature for LSTM/GRU |
+| Seasonality | Kenya's inflation has seasonal patterns — food prices spike during dry seasons. SARIMA models this explicitly; month-of-year added as a cyclical feature for LSTM|
 | Stationarity | Augmented Dickey-Fuller (ADF) test applied; differencing used where necessary before model training |
 | Missing Values | Gaps handled via forward fill or linear interpolation — strategy documented per variable |
 | Frequency Alignment | Quarterly indicators (e.g. GDP) interpolated to monthly frequency to match CPI cadence |
@@ -184,14 +184,13 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 
 1. Structured, harmonised dataset — unified monthly CSV (2009–2024) built from KNBS, CBK, World Bank, EIA, FAO, and FRED
 2. Trained LSTM model predicting Kenya's monthly headline inflation rate — primary deliverable
-3. Trained GRU model — architecture comparison against LSTM
-4. ARIMA / SARIMA baseline — classical time series benchmark
-5. XGBoost baseline — gradient boosting benchmark with lag features
-6. Model comparison report: all four models evaluated on MAE, RMSE, and MAPE
-7. Backtesting results — predicted vs. actual inflation for 2024 test period with real KNBS verification
-8. Feature importance analysis — identifying which macroeconomic indicators most drive Kenya's inflation
-9. Deployed web application — live monthly forecasting with visualisation dashboard
-10. Full reproducible pipeline: data scraper → preprocessor → feature engineer → model trainer → deployed app
+3. ARIMA / SARIMA baseline — classical time series benchmark
+4. XGBoost baseline — gradient boosting benchmark with lag features
+5. Model comparison report: all four models evaluated on MAE, RMSE, and MAPE
+6. Backtesting results — predicted vs. actual inflation for 2024 test period with real KNBS verification
+7. Feature importance analysis — identifying which macroeconomic indicators most drive Kenya's inflation
+8. Deployed web application — live monthly forecasting with visualisation dashboard
+9. Full reproducible pipeline: data scraper → preprocessor → feature engineer → model trainer → deployed app
 
 ---
 
@@ -202,7 +201,6 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 - ~180 monthly observations is a relatively small dataset for deep learning — regularisation and careful cross-validation are critical
 - Some KNBS sub-index data before 2010 may have gaps requiring interpolation — documented as a data quality limitation
 - Structural breaks (COVID-19 2020, post-election shocks) may distort model performance in those periods
-- LSTM/GRU models are sensitive to hyperparameter choices — systematic tuning via grid search required
 
 ### 12.2 Future Work
 
