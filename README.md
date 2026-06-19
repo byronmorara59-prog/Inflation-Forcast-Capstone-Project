@@ -115,14 +115,14 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 ## 7. Data Sourcing Plan
 
 
-| Source | Data Provided | Collection Method |
+| Source | Data Provided |
 |---|---|---|
-| KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures | BeautifulSoup or selenium scraper + Excel/PDF report parsing |
-| CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth | BeautifulSoup or selenium + pdfplumber for PDF reports |
-| World Bank / IMF API | GDP growth, government spending, fiscal deficit, trade balance | Public JSON REST API |
-| EIA (eia.gov) | Global Brent crude oil prices — monthly averages | EIA Open Data API / CSV download |
-| FAO (fao.org) | Global food commodity price index — monthly | FAO Data API / CSV download |
-| FRED (Federal Reserve) | US Fed funds rate, DXY dollar index | fredapi Python library |
+| KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures |
+| CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth |
+| World Bank / IMF API | GDP growth, government spending, fiscal deficit, trade balance |
+| EIA (eia.gov) | Global Brent crude oil prices — monthly averages |
+| FAO (fao.org) | Global food commodity price index — monthly |
+| FRED (Federal Reserve) | US Fed funds rate, DXY dollar index |
 
 
 
