@@ -1,7 +1,7 @@
 # Kenya Headline Inflation Rate Prediction
 ### A Multivariate Time Series Forecasting Approach Using Deep Learning on Kenyan Macroeconomic Data
 
----
+
 
 | | |
 |---|---|
@@ -10,10 +10,10 @@
 | **Models** | LSTM (Deep Learning) · ARIMA / SARIMA (classical baseline) · XGBoost with lag features (ML baseline) |
 | **Output** | Regression (exact rate) + Classification (Up / Down / Stable) |
 | **Data Range** | 2009 – 2024 (post-CPI rebase harmonisation) |
-| **Data Sources** | KNBS, CBK, World Bank/IMF, EIA, FAO, FRED — no Kaggle datasets |
+| **Data Sources** | KNBS, CBK, World Bank/IMF, EIA, FAO, FRED |
 | **Deployment** | Streamlit |
 
----
+
 
 ## 1. Target Audience
 
@@ -25,7 +25,7 @@
 - **SMEs & Retailers** — anticipate input cost increases and adjust pricing strategy in advance rather than absorbing unexpected margin compression
 - **Economic Researchers & Policy Analysts** — a benchmark for ML-based macroeconomic forecasting in Sub-Saharan Africa, with methodology transferable to other economies
 
----
+
 
 ## 2. Project Overview
 
@@ -33,11 +33,11 @@ This project develops a machine learning system to forecast Kenya's monthly head
 
 The project is structured around three pillars:
 
-- **Data engineering** — scraping, cleaning, and harmonising multi-source macroeconomic data into a unified monthly dataset
-- **Modelling** — training and benchmarking LSTM model against classical (ARIMA) and ML (XGBoost) baselines
-- **Deployment** — delivering predictions via streamlit
+- Data engineering
+- Modelling
+- Deployment
 
----
+
 
 ## 3. Problem Statement
 
@@ -50,7 +50,7 @@ This reactive posture has tangible consequences:
 - Households receive no advance signal of cost-of-living increases
 - Investors and lenders cannot accurately price inflation risk into long-term financial agreements
 
----
+
 
 ## 4. Target Variable — Headline Inflation
 
@@ -61,7 +61,7 @@ Kenya publishes two primary inflation measures. This project targets headline in
 | **Headline Inflation (Selected)** | The overall CPI — includes all goods and services in the basket: food, fuel, housing, education, health, etc. This is the figure published monthly by KNBS and widely reported in public discourse. Selected for this project due to its public relevance, data availability, and direct policy and business impact. |
 | **Core Inflation (Future Extension)** | Headline CPI minus food and fuel components. Reflects underlying structural inflation trends, stripping out volatile seasonal components. Noted as a potential extension once the headline model is validated. |
 
----
+
 
 ## 5. Data Harmonisation & Study Period
 
@@ -70,7 +70,7 @@ A critical research decision is ensuring that inflation data is methodologically
 | Period | CPI Methodology | Research Implication |
 |---|---|---|
 | Pre-2009 | Based on outdated 1997 Household Budget Survey weights | Not comparable with modern data — excluded from study |
-| 2009 onward | Rebased using 2005/2006 Household Budget Survey — major structural overhaul of basket weights | **Study Start Point** — consistent, modern methodology |
+| 2009 onward | Rebased using 2005/2006 Household Budget Survey — major structural overhaul of basket weights | Study Start Point |
 
 ---
 
@@ -83,13 +83,13 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 
 **CPI Sub-Indices (from KNBS)**
 
-| Sub-Index | What It Captures | Approx. CPI Weight |
-|---|---|---|
-| Food & Non-Alcoholic Beverages | Maize, rice, bread, milk, vegetables — largest CPI component | ~36% |
-| Transport Index | Fuel pump prices, matatu fares, transport costs | ~8% |
-| Housing, Water, Electricity & Gas | Rent, electricity bills, cooking gas | ~18% |
-| Health Index | Medicine, hospital and clinic fees | ~3% |
-| Education Index | School and college tuition fees | ~5% |
+| Sub-Index | What It Captures |
+|---|---|
+| Food & Non-Alcoholic Beverages | Maize, rice, bread, milk, vegetables — largest CPI component |
+| Transport Index | Fuel pump prices, matatu fares, transport costs |
+| Housing, Water, Electricity & Gas | Rent, electricity bills, cooking gas |
+| Health Index | Medicine, hospital and clinic fees | 
+| Education Index | School and college tuition fees | 
 
 **Monetary & Macroeconomic Indicators**
 
@@ -110,14 +110,14 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 | FAO Food Price Index | Global commodity prices for maize, wheat — key imports affecting food sub-index (FAO) |
 | US Federal Reserve Rate | Global monetary conditions influence capital flows and KES strength (FRED) |
 
----
+
 
 ## 7. Data Sourcing Plan
 
 
 | Source | Data Provided |
 
-|---|---|---|
+|---|---|
 
 | KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures |
 | CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth |
@@ -159,18 +159,18 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 | Frequency Alignment | Quarterly indicators (e.g. GDP) interpolated to monthly frequency to match CPI cadence |
 | Feature Standardisation | All features standardised (zero mean, unit variance) before training to ensure numerical stability |
 
----
+
 
 ## 9. Train / Validation / Test Split
 
-| Split | Period |
-|---|---|
-| **Training Set** | January 2009 – December 2021 (~156 months) |
-| **Validation Set** | January 2022 – December 2023 (24 months) — for hyperparameter tuning |
-| **Test Set** | January 2024 – December 2024 (12 months) |
-| **Validation Method** | Walk-forward (rolling) validation|
+| Split |
+|---|
+| **Training Set** | 
+| **Validation Set** | 
+| **Test Set** | 
+| **Validation Method** |
 
----
+
 
 ## 10. Evaluation Metrics
 
@@ -180,7 +180,7 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 | RMSE (Root Mean Squared Error) | Regression | Penalises large prediction errors more heavily — useful for catching months with big misses |
 | MAPE (Mean Abs. % Error) | Regression | % error relative to actual value — easy to communicate business impact |
 
----
+
 
 ## 11. Expected Deliverables
 
@@ -194,7 +194,7 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 8. Deployed web application — live monthly forecasting with visualisation dashboard
 9. Full reproducible pipeline: data scraper → preprocessor → feature engineer → model trainer → deployed app
 
----
+
 
 ## 12. Limitations & Future Work
 
