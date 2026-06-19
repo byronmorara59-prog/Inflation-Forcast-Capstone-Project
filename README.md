@@ -116,7 +116,9 @@ Rather than tracking individual commodity prices, KNBS publishes pre-aggregated 
 
 
 | Source | Data Provided |
+
 |---|---|---|
+
 | KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures |
 | CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth |
 | World Bank / IMF API | GDP growth, government spending, fiscal deficit, trade balance |
