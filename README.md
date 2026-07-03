@@ -1,209 +1,249 @@
 # Kenya Headline Inflation Rate Prediction
 ### A Multivariate Time Series Forecasting Approach Using Deep Learning on Kenyan Macroeconomic Data
 
-
+---
 
 | | |
 |---|---|
 | **Problem Type** | Multivariate Time Series Forecasting |
 | **Target Variable** | Kenya Headline CPI Inflation Rate (monthly, one-step ahead) |
-| **Models** | LSTM (Deep Learning) · ARIMA / SARIMA (classical baseline) · XGBoost with lag features (ML baseline) |
+| **Models** | GRU (primary) · LSTM · SARIMA (classical baseline) · XGBoost (ML baseline) |
+| **Best Model** | GRU — MAE: 0.66 · RMSE: 0.94 · MAPE: 14.87% |
 | **Output** | Regression (exact rate) + Classification (Up / Down / Stable) |
-| **Data Range** | 2009 – 2024 (post-CPI rebase harmonisation) |
-| **Data Sources** | KNBS, CBK, World Bank/IMF, EIA, FAO, FRED |
-| **Deployment** | Streamlit |
+| **Data Range** | 2009 – 2026 (post-CPI rebase harmonisation) |
+| **Data Sources** | KNBS, CBK, EIA/FRED — no Kaggle datasets |
+| **Deployment** | Streamlit web application |
 
-
+---
 
 ## 1. Target Audience
 
-- **Central Bank of Kenya (CBK)** — anticipate inflation shifts before MPC meetings rather than reacting after CPI is published, enabling more proactive monetary policy
-- **National Treasury & Ministry of Finance** — adjust government spending and borrowing decisions based on forward-looking inflation signals for better fiscal planning
-- **Commercial Banks & Lenders** — price loans, mortgages, and fixed-income products more accurately by incorporating predicted inflation into risk models
-- **Investment Firms & Fund Managers** — improve inflation-adjusted return forecasting for bonds, equities, and money market funds listed on the NSE
-- **Import/Export Businesses** — forward-price contracts and hedge currency exposure based on anticipated cost-of-living and exchange rate pressures
-- **SMEs & Retailers** — anticipate input cost increases and adjust pricing strategy in advance rather than absorbing unexpected margin compression
-- **Economic Researchers & Policy Analysts** — a benchmark for ML-based macroeconomic forecasting in Sub-Saharan Africa, with methodology transferable to other economies
+- **Central Bank of Kenya (CBK)** — anticipate inflation shifts before MPC meetings, enabling more proactive monetary policy
+- **National Treasury & Ministry of Finance** — adjust spending and borrowing decisions based on forward-looking inflation signals
+- **Commercial Banks & Lenders** — price loans, mortgages, and fixed-income products more accurately
+- **Investment Firms & Fund Managers** — improve inflation-adjusted return forecasting for NSE instruments
+- **Import/Export Businesses** — forward-price contracts and hedge currency exposure
+- **SMEs & Retailers** — anticipate input cost increases and adjust pricing strategy in advance
+- **Economic Researchers & Policy Analysts** — benchmark for ML-based macroeconomic forecasting in Sub-Saharan Africa
 
-
+---
 
 ## 2. Project Overview
 
-This project develops a machine learning system to forecast Kenya's monthly headline inflation rate using historical macroeconomic time series data. The system ingests publicly available economic indicators — sourced via web scraping from Kenyan and international institutions — and trains deep learning models to predict the next month's Consumer Price Index (CPI) inflation figure.
+This project develops a machine learning system to forecast Kenya's monthly headline inflation rate using historical macroeconomic time series data. The system ingests publicly available economic indicators and trains deep learning models to predict the next month's CPI inflation figure.
 
 The project is structured around three pillars:
 
-- Data engineering
-- Modelling
-- Deployment
+- **Data engineering** — scraping, cleaning, and harmonising multi-source macroeconomic data into a unified monthly dataset
+- **Modelling** — training and benchmarking GRU/LSTM deep learning models against SARIMA and XGBoost baselines
+- **Deployment** — delivering predictions via a live Streamlit web application
 
-
+---
 
 ## 3. Problem Statement
 
-Inflation is one of the most consequential macroeconomic indicators in Kenya, directly affecting household purchasing power, business pricing decisions, loan affordability, and government fiscal policy. Despite its importance, inflation forecasting in Kenya remains largely reactive — businesses, policymakers, and households respond to published figures after they are released by the Kenya National Bureau of Statistics (KNBS) rather than anticipating changes in advance.
+Inflation forecasting in Kenya remains largely reactive — businesses, policymakers, and households respond to published figures after they are released by KNBS rather than anticipating changes in advance. This has tangible consequences:
 
-This reactive posture has tangible consequences:
-
-- Businesses cannot accurately price goods and contracts months ahead, leading to margin compression or over-pricing
-- The Central Bank of Kenya (CBK) adjusts monetary policy after inflation has already shifted, reducing proactive effectiveness
+- Businesses cannot accurately price goods and contracts months ahead
+- The CBK adjusts monetary policy after inflation has already shifted
 - Households receive no advance signal of cost-of-living increases
-- Investors and lenders cannot accurately price inflation risk into long-term financial agreements
+- Investors cannot accurately price inflation risk into long-term agreements
 
-
+---
 
 ## 4. Target Variable — Headline Inflation
 
-Kenya publishes two primary inflation measures. This project targets headline inflation for the reasons outlined below:
-
 | Measure | Description |
 |---|---|
-| **Headline Inflation (Selected)** | The overall CPI — includes all goods and services in the basket: food, fuel, housing, education, health, etc. This is the figure published monthly by KNBS and widely reported in public discourse. Selected for this project due to its public relevance, data availability, and direct policy and business impact. |
-| **Core Inflation (Future Extension)** | Headline CPI minus food and fuel components. Reflects underlying structural inflation trends, stripping out volatile seasonal components. Noted as a potential extension once the headline model is validated. |
+| **Headline Inflation (Selected)** | Overall CPI — includes all goods and services. Published monthly by KNBS. Selected for public relevance and direct policy impact. |
+| **Core Inflation (Future Extension)** | Headline CPI minus food and fuel. Noted as a potential future extension. |
 
-
+---
 
 ## 5. Data Harmonisation & Study Period
 
-A critical research decision is ensuring that inflation data is methodologically consistent across the entire study period. Kenya's CPI measurement has undergone significant revisions over time, making pre-rebase data incomparable with post-rebase data.
-
 | Period | CPI Methodology | Research Implication |
 |---|---|---|
-| Pre-2009 | Based on outdated 1997 Household Budget Survey weights | Not comparable with modern data — excluded from study |
-| 2009 onward | Rebased using 2005/2006 Household Budget Survey — major structural overhaul of basket weights | Study Start Point |
+| Pre-2009 | Based on outdated 1997 Household Budget Survey | Not comparable — excluded |
+| 2009 onward | Rebased using 2005/2006 survey — major overhaul | ✔ **Study Start Point** |
+| 2019/2020+ | Rebased using 2015/2016 survey — current basket | Refinement within same framework |
+
+> Dataset starts from 2009 to ensure CPI methodology consistency across the full study period.
 
 ---
 
 ## 6. Dataset Description
 
-
-### 6.1 Feature Categories
-
-Rather than tracking individual commodity prices, KNBS publishes pre-aggregated CPI sub-indices that combine all items within each category. These are used directly as features.
-
-**CPI Sub-Indices (from KNBS)**
-
-| Sub-Index | What It Captures |
-|---|---|
-| Food & Non-Alcoholic Beverages | Maize, rice, bread, milk, vegetables — largest CPI component |
-| Transport Index | Fuel pump prices, matatu fares, transport costs |
-| Housing, Water, Electricity & Gas | Rent, electricity bills, cooking gas |
-| Health Index | Medicine, hospital and clinic fees | 
-| Education Index | School and college tuition fees | 
-
-**Monetary & Macroeconomic Indicators**
-
-| Indicator | Description |
-|---|---|
-| Money Supply (M3) | Broad money in circulation — excess supply drives inflation (CBK) |
-| CBK Central Bank Rate | Benchmark lending rate — higher rate cools inflation (CBK) |
-| KES/USD Exchange Rate | Weak shilling increases import costs → imported inflation (CBK) |
-| GDP Growth Rate | Higher growth can trigger demand-pull inflation (World Bank/IMF) |
-| Government Fiscal Deficit | Excess spending injects money into economy, fuelling inflation (World Bank) |
-| Credit Growth | How aggressively banks are lending — demand stimulus signal (CBK) |
-
-**Global / External Indicators**
-
-| Indicator | Description |
-|---|---|
-| Brent Crude Oil Price | Global oil price feeds directly into Kenya's fuel and transport sub-index (EIA) |
-| FAO Food Price Index | Global commodity prices for maize, wheat — key imports affecting food sub-index (FAO) |
-| US Federal Reserve Rate | Global monetary conditions influence capital flows and KES strength (FRED) |
-
-
-
-## 7. Data Sourcing Plan
-
-
-| Source | Data Provided |
-
-|---|---|
-
-| KNBS (knbs.or.ke) | Monthly CPI, all sub-indices, headline inflation figures |
-| CBK (cbk.go.ke) | CBR history, money supply (M3), KES/USD rates, forex reserves, credit growth |
-| World Bank / IMF API | GDP growth, government spending, fiscal deficit, trade balance |
-| EIA (eia.gov) | Global Brent crude oil prices — monthly averages |
-| FAO (fao.org) | Global food commodity price index — monthly |
-| FRED (Federal Reserve) | US Fed funds rate, DXY dollar index |
-
-
-
-## 8. Methodology
-
-### 8.1 Problem Framing
+### 6.1 Structure
 
 | | |
 |---|---|
-| **Time Series Forecasting** | The fundamental nature of the problem — data is sequential, monthly, and order-dependent |
-| **Regression Task** | Predict the exact headline CPI inflation rate (%) for next month — for example output: 6.3% |
-| **Classification Task** | Predict the direction of change: Will inflation Rise / Fall / Stay Stable next month? |
+| **Unit of Observation** | One calendar month |
+| **Frequency** | Monthly |
+| **Study Period** | January 2009 – February 2026 (~200 observations after feature engineering) |
+| **Target Variable (y)** | Kenya Headline CPI Inflation Rate (%) |
+| **Features (X)** | brent_crude, cbk_rate, kes_usd, m3_pct_change, forex_reserves, month |
+| **Format** | Single merged CSV — date-indexed |
+
+### 6.2 Feature Categories
+
+| Indicator | Description |
+|---|---|
+| Brent Crude Oil Price | Global oil price feeds into Kenya's fuel and transport costs (EIA/FRED) |
+| CBK Central Bank Rate | Benchmark lending rate — higher rate cools inflation (CBK) |
+| KES/USD Exchange Rate | Weak shilling increases import costs → imported inflation (CBK) |
+| Money Supply M3 (% change) | Monthly rate of change in broad money — captures inflationary pressure (CBK) |
+| Forex Reserves | CBK foreign asset holdings — proxy for economic stability (CBK) |
+| Month (1-12) | Captures confirmed 12-month seasonal cycle |
+
+---
+
+## 7. Data Sourcing Plan
+
+> All data collected via web scraping and public APIs. No Kaggle datasets used.
+
+| Source | Data Provided | Collection Method |
+|---|---|---|
+| KNBS (knbs.or.ke) | Monthly headline inflation figures | CSV download from CBK statistics portal |
+| CBK (cbk.go.ke) | CBR history, M3, KES/USD, forex reserves | CSV downloads from CBK statistical bulletins |
+| EIA / FRED | Brent crude oil prices — monthly averages | FRED direct CSV download (DCOILBRENTEU) |
+
+---
+
+## 8. Data Storage
+
+All scraped data is stored in a **SQLite database** before preprocessing and modelling.
+
+| Table | Contents | Updated |
+|---|---|---|
+| raw_cbk | CBR, M3, KES/USD, forex reserves | Monthly |
+| raw_inflation | Headline inflation from KNBS/CBK | Monthly |
+| raw_brent | Brent crude from FRED | Monthly |
+| processed_features | Cleaned, scaled features for modelling | On pipeline run |
+| predictions | Predicted vs actual inflation per month | On model run |
+
+---
+
+## 9. Methodology
+
+### 9.1 Problem Framing
+
+| | |
+|---|---|
+| **Time Series Forecasting** | Sequential, monthly, order-dependent data |
+| **Regression Task** | Predict exact inflation rate (%) for next month |
+| **Classification Task** | Predict direction: Rise / Fall / Stay Stable |
 | **Forecast Horizon** | One-step ahead (next month) |
 
-### 8.2 Models
+### 9.2 Preprocessing Steps
 
-| Model | Type | Role & Rationale |
-|---|---|---|
-| LSTM (Long Short-Term Memory) | Deep Learning — Recurrent | **Primary:** Designed for sequential data; captures long-range dependencies across months |
-
-| ARIMA / SARIMA | Classical Time Series | **Baseline:** SARIMA variant handles Kenya's seasonal inflation patterns |
-| XGBoost with Lag Features | Gradient Boosting (ML) | **ML Baseline:** Strong non-deep-learning benchmark on engineered lag features |
-
-### 8.3 Key Technical Considerations
-
-| Consideration | Detail |
+| Step | Finding / Decision |
 |---|---|
-| Lag Features | Inflation this month is influenced by indicators from prior months. A lag window (e.g. 3–6 months back) is engineered as additional input features |
-| Seasonality | Kenya's inflation has seasonal patterns — food prices spike during dry seasons. SARIMA models this explicitly; month-of-year added as a cyclical feature for LSTM|
-| Stationarity | Augmented Dickey-Fuller (ADF) test applied; differencing used where necessary before model training |
-| Missing Values | Gaps handled via forward fill or linear interpolation — strategy documented per variable |
-| Frequency Alignment | Quarterly indicators (e.g. GDP) interpolated to monthly frequency to match CPI cadence |
-| Feature Standardisation | All features standardised (zero mean, unit variance) before training to ensure numerical stability |
+| Decomposition | Confirmed long-term downward trend and strong 12-month seasonal cycle |
+| Stationarity (ADF) | Borderline stationary at 5% (p=0.048) — no differencing applied |
+| ACF/PACF | Significant autocorrelations at lags 1-6 — informed SARIMA configuration |
+| Scaling | MinMaxScaler — bounded 0-1 range optimal for GRU/LSTM activations |
 
+### 9.3 Feature Engineering
 
+An ablation study compared models with and without lag features. Lag features consistently degraded performance across all models — attributed to the curse of dimensionality with ~150 training observations. Final models use:
 
-## 9. Train / Validation / Test Split
+- **M3 percentage change** — monthly rate of change more informative than raw level
+- **Month feature** — captures 12-month seasonal cycle
+- **No lag features** — no-lag versions outperformed lag versions for all models
 
-| Split |
-|---|
-| **Training Set** | 
-| **Validation Set** | 
-| **Test Set** | 
-| **Validation Method** |
+### 9.4 Models
 
-
-
-## 10. Evaluation Metrics
-
-| Metric | Task | What It Measures |
+| Model | Type | Role |
 |---|---|---|
-| MAE (Mean Absolute Error) | Regression | Average absolute difference between predicted and actual rate — most interpretable for non-technical audiences |
-| RMSE (Root Mean Squared Error) | Regression | Penalises large prediction errors more heavily — useful for catching months with big misses |
-| MAPE (Mean Abs. % Error) | Regression | % error relative to actual value — easy to communicate business impact |
+| SARIMA(1,0,1)(1,0,1,12) | Classical Time Series | Baseline — univariate, inflation history only |
+| XGBoost | Gradient Boosting | ML Baseline — multivariate, no sequential memory |
+| LSTM (seq=12, hidden=128) | Deep Learning — Recurrent | Primary — sequence window of 12 months |
+| GRU (seq=12, hidden=128) | Deep Learning — Recurrent | Primary — simpler 2-gate architecture, best performer |
 
+---
 
+## 10. Train / Validation / Test Split
 
-## 11. Expected Deliverables
+| Split | Period |
+|---|---|
+| **Training Set** | January 2009 – December 2021 (~150 months) |
+| **Validation Set** | January 2022 – December 2023 (24 months) |
+| **Test Set** | January 2024 – February 2026 (26 months) — holdout, verified against real KNBS figures |
 
-1. Structured, harmonised dataset — unified monthly CSV (2009–2024) built from KNBS, CBK, World Bank, EIA, FAO, and FRED
-2. Trained LSTM model predicting Kenya's monthly headline inflation rate — primary deliverable
-3. ARIMA / SARIMA baseline — classical time series benchmark
-4. XGBoost baseline — gradient boosting benchmark with lag features
-5. Model comparison report: all four models evaluated on MAE, RMSE, and MAPE
-6. Backtesting results — predicted vs. actual inflation for 2024 test period with real KNBS verification
-7. Feature importance analysis — identifying which macroeconomic indicators most drive Kenya's inflation
-8. Deployed web application — live monthly forecasting with visualisation dashboard
-9. Full reproducible pipeline: data scraper → preprocessor → feature engineer → model trainer → deployed app
+> Walk-forward validation used throughout — temporal order preserved, no random shuffling.
 
+---
 
+## 11. Model Results
 
-## 12. Limitations & Future Work
+| Model | MAE | RMSE | MAPE |
+|---|---|---|---|
+| SARIMA(1,0,1)(1,0,1,12) | 1.2194 | 1.3854 | 32.87% |
+| XGBoost (no lags) | 1.4199 | 1.6015 | 38.26% |
+| XGBoost (with lags) | 1.4509 | 1.6277 | 38.94% |
+| LSTM (seq=12, hidden=128) | 1.0521 | 1.2951 | 25.83% |
+| **GRU (seq=12, hidden=128)** | **0.6619** | **0.9396** | **14.87% ✔** |
 
-### 12.1 Known Limitations
+**Key findings:**
+- GRU is the best performing model — MAPE of 14.87% (good range: 10-20%)
+- Deep learning models significantly outperform SARIMA and XGBoost
+- GRU outperforms LSTM — simpler architecture generalises better on small datasets
+- Lag features degraded performance across all models — curse of dimensionality confirmed
+- Sequence length of 12 months optimal — aligns with confirmed seasonal cycle
 
-- ~180 monthly observations is a relatively small dataset for deep learning — regularisation and careful cross-validation are critical
-- Some KNBS sub-index data before 2010 may have gaps requiring interpolation — documented as a data quality limitation
-- Structural breaks (COVID-19 2020, post-election shocks) may distort model performance in those periods
+---
 
-### 12.2 Future Work
+## 12. Evaluation Metrics
 
-- Extend to core inflation prediction and compare performance between headline and core models
+| Metric | What It Measures |
+|---|---|
+| MAE (Mean Absolute Error) | Average absolute difference in percentage points |
+| RMSE (Root Mean Squared Error) | Penalises large errors more heavily |
+| MAPE (Mean Abs. % Error) | % error relative to actual — primary metric |
+
+---
+
+## 13. Deployment
+
+- **Platform:** Streamlit web application
+- **Hosting:** Streamlit Community Cloud
+- **Model:** GRU (seq=12, hidden=128) — saved as `gru_model.pth`
+- **Update Cadence:** Monthly
+
+**Application Features:**
+- Historical inflation trend visualisation (2009 – present)
+- Predicted vs actual inflation on the 26-month test set
+- Next month inflation forecast
+- Model comparison dashboard
+
+---
+
+## 14. Expected Deliverables
+
+1. Structured, harmonised dataset — unified monthly CSV (2009–2026)
+2. SQLite database — raw data, processed features, and predictions
+3. Trained GRU model (`gru_model.pth`)
+4. Trained LSTM model
+5. SARIMA baseline
+6. XGBoost baseline
+7. Ablation study results — lag vs no-lag comparison
+8. Model comparison report
+9. Backtesting results — 2024-2026 predictions vs real KNBS figures
+10. Deployed Streamlit web application
+11. Full reproducible pipeline
+
+---
+
+## 15. Limitations & Future Work
+
+### 15.1 Known Limitations
+
+- ~150 training observations is small for deep learning
+- Lag features degraded performance — future work could explore PCA before adding lags
+- Structural breaks (COVID-19, post-election shocks) affect model generalisation
+- All models struggled with the rapid 2024 inflation decline
+
+### 15.2 Future Work
+
+- Extend to core inflation prediction and compare with headline model
