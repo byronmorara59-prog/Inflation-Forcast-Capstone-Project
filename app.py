@@ -76,7 +76,7 @@ inflation_max = bounds['max']
 # ----------------------------
 # Title
 # ----------------------------
-st.title("🇰🇪 Kenya Headline Inflation Rate Forecast")
+st.title("Kenya Headline Inflation Rate Forecast")
 st.caption("GRU-based multivariate time series forecasting model")
 
 # ----------------------------
