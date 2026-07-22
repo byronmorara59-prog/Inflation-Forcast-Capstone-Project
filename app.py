@@ -49,6 +49,11 @@ st.markdown(f"""
     div[data-testid="stMetricValue"] {{
         color: {TEXT} !important;
     }}
+    div[data-testid="stNumberInput"] input, div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+        background-color: {BG};
+        color: {TEXT};
+        border: 1px solid {CARD_BORDER};
+    }}
     .block-container {{
         padding-top: 2.2rem;
     }}
@@ -64,8 +69,12 @@ st.markdown(f"""
         background-color: {CARD_BG};
         border: 1px solid {CARD_BORDER};
         border-radius: 12px;
-        padding: 20px 22px;
+        padding: 22px 24px;
+        margin-top: 8px;
         margin-bottom: 18px;
+    }}
+    hr {{
+        border-color: {CARD_BORDER} !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -91,8 +100,9 @@ FEATURE_COLS = [
     'kes_usd', 'm3', 'forex_reserves', 'month', 'm3_pct_change'
 ]
 TARGET_IDX = FEATURE_COLS.index('headline_inflation')
-MONTH_IDX = FEATURE_COLS.index('month')
-FORECAST_MONTHS = 6
+
+MONTH_NAMES = ['January','February','March','April','May','June',
+               'July','August','September','October','November','December']
 
 # ============================================================
 # Cached loaders
@@ -133,13 +143,11 @@ except Exception as e:
 
 inflation_min = bounds['min']
 inflation_max = bounds['max']
-month_min = scaler.data_min_[MONTH_IDX]
-month_max = scaler.data_max_[MONTH_IDX]
 
 # ============================================================
 # Header
 # ============================================================
-st.markdown("## 🇰🇪 Kenya Headline Inflation Rate Forecast")
+st.markdown("## Kenya Headline Inflation Rate Forecast")
 st.markdown('<p class="subtitle">GRU-based multivariate time series forecasting model</p>', unsafe_allow_html=True)
 st.write("")
 
@@ -162,68 +170,141 @@ st.pyplot(fig1)
 st.write("")
 
 # ============================================================
-# Recursive multi-month forecast
+# Next month forecast (automatic, using the real last 12 months)
 # ============================================================
-st.markdown(f"#### {FORECAST_MONTHS}-Month Forecast")
+st.markdown("#### Next Month Forecast")
 
 if len(df) < SEQ_LEN:
     st.warning(f"Need at least {SEQ_LEN} rows of data to forecast; only have {len(df)}.")
 else:
     scaled_values = scaler.transform(df[FEATURE_COLS])
-    window = scaled_values[-SEQ_LEN:].copy()
+    last_seq = scaled_values[-SEQ_LEN:]
+    x_input = torch.tensor(last_seq, dtype=torch.float32).unsqueeze(0)
+
+    with torch.no_grad():
+        pred_scaled = model(x_input).item()
+    pred_actual = pred_scaled * (inflation_max - inflation_min) + inflation_min
 
     last_date = df['date'].max()
-    forecast_dates, forecast_values = [], []
+    next_date = last_date + pd.DateOffset(months=1)
+    next_month_name = next_date.strftime('%B %Y')
+    last_actual = df['headline_inflation'].iloc[-1]
 
-    for step in range(FORECAST_MONTHS):
-        x_input = torch.tensor(window, dtype=torch.float32).unsqueeze(0)
-        with torch.no_grad():
-            pred_scaled = model(x_input).item()
-        pred_actual = pred_scaled * (inflation_max - inflation_min) + inflation_min
-
-        next_date = last_date + pd.DateOffset(months=step + 1)
-        forecast_dates.append(next_date)
-        forecast_values.append(pred_actual)
-
-        # Build the next row: carry forward the last known exogenous features,
-        # feed the prediction back in as the new "headline_inflation", and advance the month.
-        new_row = window[-1].copy()
-        new_row[TARGET_IDX] = pred_scaled
-        next_month_scaled = ((next_date.month) - month_min) / (month_max - month_min)
-        new_row[MONTH_IDX] = next_month_scaled
-
-        window = np.vstack([window[1:], new_row])
-
-    col1, col2 = st.columns([1.3, 1])
-
+    col1, col2 = st.columns(2)
     with col1:
-        fig2, ax2 = plt.subplots(figsize=(7, 3.6))
-        fig2.patch.set_facecolor(BG)
-        ax2.set_facecolor(BG)
-        recent_hist = df.tail(12)
-        ax2.plot(recent_hist['date'], recent_hist['headline_inflation'], color=MUTED, linewidth=1.6, label="Actual")
-        ax2.plot(forecast_dates, forecast_values, color=RUST, linewidth=2, linestyle="--", marker="o", label="Forecast")
-        ax2.axvline(last_date, color=CARD_BORDER, linestyle=":", linewidth=1)
-        ax2.set_ylabel("Inflation (%)", color=MUTED)
-        ax2.tick_params(colors=MUTED, labelsize=8)
-        ax2.legend(facecolor=CARD_BG, edgecolor=CARD_BORDER, labelcolor=TEXT, fontsize=9)
-        for spine in ax2.spines.values():
-            spine.set_color(CARD_BORDER)
-        ax2.grid(True, alpha=0.15, color=MUTED)
-        st.pyplot(fig2)
-
+        st.metric(label=f"Predicted inflation — {next_month_name}", value=f"{pred_actual:.2f}%")
     with col2:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        for d, v in zip(forecast_dates, forecast_values):
-            st.metric(label=d.strftime('%B %Y'), value=f"{v:.2f}%")
-        st.markdown('</div>', unsafe_allow_html=True)
+        delta = pred_actual - last_actual
+        st.metric(label="Change vs last recorded month", value=f"{delta:+.2f} pts")
 
-    st.caption(
-        "⚠️ Only the next-month forecast is validated (test MAPE 14.87%). Months 2–6 are an illustrative "
-        "recursive projection: the model's own prediction is fed back in as history, while oil prices, the "
-        "CBK rate, the exchange rate, money supply and forex reserves are held at their last known values. "
-        "Treat this as a rough trend indicator beyond month 1, not a validated forecast."
+st.write("")
+
+# ============================================================
+# Custom Inflation Prediction — manual input calculator
+# ============================================================
+st.markdown("---")
+st.markdown("#### 🔮 Custom Inflation Prediction")
+st.markdown("Enter current economic indicators to predict headline inflation for a chosen month:")
+
+st.markdown('<div class="section-card">', unsafe_allow_html=True)
+
+last_row = df.iloc[-1]
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    input_headline = st.number_input(
+        "Current Month's Headline Inflation (%)", min_value=0.0, max_value=30.0,
+        value=float(last_row['headline_inflation']), step=0.1
     )
+    input_brent = st.number_input(
+        "Brent Crude Oil (USD/barrel)", min_value=20.0, max_value=200.0,
+        value=float(last_row['brent_crude']), step=0.5
+    )
+    input_cbk = st.number_input(
+        "CBK Rate (%)", min_value=1.0, max_value=25.0,
+        value=float(last_row['cbk_rate']), step=0.25
+    )
+with c2:
+    input_kes = st.number_input(
+        "KES/USD Exchange Rate", min_value=50.0, max_value=250.0,
+        value=float(last_row['kes_usd']), step=0.5
+    )
+    input_m3 = st.number_input(
+        "Money Supply M3 (KSh Millions)", min_value=500000.0, max_value=15000000.0,
+        value=float(last_row['m3']), step=10000.0
+    )
+    input_forex = st.number_input(
+        "Forex Reserves (KSh Millions)", min_value=50000.0, max_value=2000000.0,
+        value=float(last_row['forex_reserves']), step=5000.0
+    )
+with c3:
+    input_m3_pct = st.number_input(
+        "Money Supply M3 — % Change", min_value=-20.0, max_value=20.0,
+        value=float(last_row['m3_pct_change']), step=0.1
+    )
+    input_month = st.selectbox(
+        "Month These Indicators Describe", options=list(range(1, 13)),
+        format_func=lambda x: MONTH_NAMES[x - 1],
+        index=(int(last_row['month']) % 12),
+        help="The model then predicts the month right after this one."
+    )
+
+predict_clicked = st.button("Predict Inflation", type="primary")
+
+if predict_clicked:
+    new_row = {
+        'headline_inflation': input_headline,
+        'brent_crude': input_brent,
+        'cbk_rate': input_cbk,
+        'kes_usd': input_kes,
+        'm3': input_m3,
+        'forex_reserves': input_forex,
+        'month': input_month,
+        'm3_pct_change': input_m3_pct
+    }
+
+    # Last 11 real months + the one custom month the user just described.
+    # The model then predicts ONE step past that described month.
+    last_11 = df[FEATURE_COLS].iloc[-11:].copy()
+    new_row_df = pd.DataFrame([new_row])[FEATURE_COLS]
+    combined = pd.concat([last_11, new_row_df], ignore_index=True)
+
+    combined_scaled = scaler.transform(combined)
+    sequence = torch.tensor(combined_scaled.reshape(1, SEQ_LEN, -1), dtype=torch.float32)
+
+    with torch.no_grad():
+        pred_scaled = model(sequence).item()
+    pred_inflation = pred_scaled * (inflation_max - inflation_min) + inflation_min
+
+    described_month_name = MONTH_NAMES[input_month - 1]
+    predicted_month_name = MONTH_NAMES[input_month % 12]  # the month right after
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        st.metric(
+            label=f"Predicted Inflation for {predicted_month_name}",
+            value=f"{pred_inflation:.2f}%",
+            delta=f"{pred_inflation - input_headline:+.2f} pts vs {described_month_name}"
+        )
+    with r2:
+        direction = "📈 Rising" if pred_inflation > input_headline else "📉 Falling" if pred_inflation < input_headline else "➡️ Stable"
+        st.metric(label="Direction", value=direction)
+    with r3:
+        st.metric(label="Model Confidence", value="± 0.94 pts (RMSE)")
+
+    st.markdown(f"""
+> **Interpretation:** Based on the economic indicators you described for **{described_month_name}** — Brent crude at \\${input_brent:.1f}/barrel,
+> CBK rate at {input_cbk:.2f}%, KES/USD at {input_kes:.1f}, and headline inflation at {input_headline:.2f}% —
+> the GRU model predicts Kenya's headline inflation for **{predicted_month_name}** (the following month) will be **{pred_inflation:.2f}%**.
+""")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.caption(
+    "The calculator uses your inputs for the most recent month only; the 11 months before it are the model's "
+    "real recorded history. Predictions further from real data carry more uncertainty."
+)
 
 st.markdown(
     '<div class="footer-credit">Model: GRU (hidden_size=128, seq_len=12) · Data: KNBS, CBK, EIA/FRED</div>',
