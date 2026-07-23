@@ -128,7 +128,7 @@ def load_bounds():
 def load_data():
     df = pd.read_csv('Cleaned Dataset.csv', parse_dates=['date'])
     df['month'] = df['date'].dt.month
-    df['m3_pct_change'] = 0.0  # Forcefully zeroing historical tracking out
+    df['m3_pct_change'] = df['m3'].pct_change() * 100
     df = df.dropna().reset_index(drop=True)
     return df
 
@@ -238,18 +238,21 @@ with c2:
         value=float(last_row['forex_reserves']), step=5000.0
     )
 with c3:
-    # m3_pct_change user input box removed here to clean UI layout
+    input_m3_pct = st.number_input(
+        "Money Supply M3 — % Change", min_value=-20.0, max_value=20.0,
+        value=float(last_row['m3_pct_change']), step=0.1
+    )
     input_month = st.selectbox(
         "Month These Indicators Describe", options=list(range(1, 13)),
         format_func=lambda x: MONTH_NAMES[x - 1],
-        index=int(last_row['month']) - 1
+        index=(int(last_row['month']) % 12),
+        help="The model then predicts the month right after this one."
     )
 
-st.markdown('</div>', unsafe_allow_html=True)
+predict_clicked = st.button("Predict Inflation", type="primary")
 
-if st.button("Predict Inflation", type="primary"):
-    # Generate custom dataframe row structure matching the scaler vector shapes
-    custom_data = pd.DataFrame([{
+if predict_clicked:
+    new_row = {
         'headline_inflation': input_headline,
         'brent_crude': input_brent,
         'cbk_rate': input_cbk,
@@ -257,31 +260,53 @@ if st.button("Predict Inflation", type="primary"):
         'm3': input_m3,
         'forex_reserves': input_forex,
         'month': input_month,
-        'm3_pct_change': 0.0  # Safely hardcoding neutral state vector parameter
-    }])
-    
-    # Process custom scale configurations
-    try:
-        custom_scaled = scaler.transform(custom_data[FEATURE_COLS])
-        
-        # Simulating dummy seq matrix matching GRU structure layout expectations
-        dummy_seq = np.repeat(custom_scaled, SEQ_LEN, axis=0).reshape(1, SEQ_LEN, -1)
-        x_custom_input = torch.tensor(dummy_seq, dtype=torch.float32)
-        
-        with torch.no_grad():
-            custom_pred_scaled = model(x_custom_input).item()
-            
-        custom_pred_actual = custom_pred_scaled * (inflation_max - inflation_min) + inflation_min
-        custom_delta = custom_pred_actual - input_headline
-        
-        st.write("")
-        st.markdown("#### Custom Prediction Results")
-        res_col1, res_col2 = st.columns(2)
-        with res_col1:
-            st.metric(label="Predicted Inflation", value=f"{custom_pred_actual:.2f}%")
-        with res_col2:
-            st.metric(label="Change vs Input Month", value=f"{custom_delta:+.2f} pts")
-    except Exception as calc_err:
-        st.error(f"Prediction matrix matching error: {calc_err}")
+        'm3_pct_change': input_m3_pct
+    }
 
-st.markdown('<div class="footer-credit">Kenya Inflation Forecast Model Workspace</div>', unsafe_allow_html=True)
+    # Last 11 real months + the one custom month the user just described.
+    # The model then predicts ONE step past that described month.
+    last_11 = df[FEATURE_COLS].iloc[-11:].copy()
+    new_row_df = pd.DataFrame([new_row])[FEATURE_COLS]
+    combined = pd.concat([last_11, new_row_df], ignore_index=True)
+
+    combined_scaled = scaler.transform(combined)
+    sequence = torch.tensor(combined_scaled.reshape(1, SEQ_LEN, -1), dtype=torch.float32)
+
+    with torch.no_grad():
+        pred_scaled = model(sequence).item()
+    pred_inflation = pred_scaled * (inflation_max - inflation_min) + inflation_min
+
+    described_month_name = MONTH_NAMES[input_month - 1]
+    predicted_month_name = MONTH_NAMES[input_month % 12]  # the month right after
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        st.metric(
+            label=f"Predicted Inflation for {predicted_month_name}",
+            value=f"{pred_inflation:.2f}%",
+            delta=f"{pred_inflation - input_headline:+.2f} pts vs {described_month_name}"
+        )
+    with r2:
+        direction = "📈 Rising" if pred_inflation > input_headline else "📉 Falling" if pred_inflation < input_headline else "➡️ Stable"
+        st.metric(label="Direction", value=direction)
+    with r3:
+        st.metric(label="Model Confidence", value="± 0.94 pts (RMSE)")
+
+    st.markdown(f"""
+> **Interpretation:** Based on the economic indicators you described for **{described_month_name}** — Brent crude at \\${input_brent:.1f}/barrel,
+> CBK rate at {input_cbk:.2f}%, KES/USD at {input_kes:.1f}, and headline inflation at {input_headline:.2f}% —
+> the GRU model predicts Kenya's headline inflation for **{predicted_month_name}** (the following month) will be **{pred_inflation:.2f}%**.
+""")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.caption(
+    "The calculator uses your inputs for the most recent month only; the 11 months before it are the model's "
+    "real recorded history. Predictions further from real data carry more uncertainty."
+)
+
+st.markdown(
+    '<div class="footer-credit">Model: GRU (hidden_size=128, seq_len=12) · Data: KNBS, CBK, EIA/FRED</div>',
+    unsafe_allow_html=True
+)
